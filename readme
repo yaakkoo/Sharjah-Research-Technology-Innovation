@@ -1,0 +1,48 @@
+
+Hi, 
+
+I am yazan and this is my tasl
+
+after running the project 
+
+you can check the swagger using 
+
+
+http://localhost:${port from env}/v1/docs/static/index.html
+
+
+here are my env now
+
+DEBUG=true
+NODE_ENV=development
+API_HOST=http://localhost:8080
+FRONT_HOST=
+API_PORT=8080
+DB_HOST=localhost
+DB_PORT="5432"
+DB_PASSWORD=root
+DB_NAME=data
+DB_USERNAME=postgres
+JWT_SECRET="lku$h47mf%m1kue&kf2"
+JWT_EXPIRE=15d
+REFRESH_TOKEN_EXPIRE=30d
+ADMIN_PASSWORD=rootroot
+
+
+to view the html file
+
+you need  "live server" extenction
+
+then right click on the html file from vs code 
+
+then click on "open wth live server"
+
+please login in swagger then you can add the token in order to save it in local storage 
+
+then you can add , edit , delete , change password of users
+
+if you want to login with another user
+to check the perms
+
+login with swagger then add the token as i did mention above
+

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Data Grid</title>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      border: 1px solid black;
+      padding: 8px;
+      text-align: left;
+    }
+
+    .form-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .selected {
+      background-color: #f1f1f1;
+    }
+
+    .error-popup {
+      display: none;
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background-color: red;
+      color: white;
+      padding: 20px;
+      border-radius: 5px;
+      z-index: 1000;
+    }
+
+    .error-popup button {
+      margin-top: 10px;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>User Data Grid</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Date of Birth</th>
+        <th>Emirate</th>
+        <th>Is Admin</th>
+        <th>Can Edit</th>
+        <th>Can Add</th>
+        <th>Address</th>
+        <th>Home City</th>
+        <th>Home Country</th>
+      </tr>
+    </thead>
+    <tbody id="data-grid">
+      <!-- Data will be inserted here -->
+    </tbody>
+  </table>
+
+  <div>
+    <button onclick="showAddForm()">Add User</button>
+    <button onclick="showEditForm()" disabled id="editButton">Edit User</button>
+    <button onclick="deleteUser()" disabled id="deleteButton">Delete User</button>
+    <button onclick="showChangePasswordForm()" disabled id="changePasswordButton">Change Password</button>
+  </div>
+
+  <div class="form-container" id="userFormContainer">
+    <form id="userForm">
+      <input type="hidden" id="userId" name="userId">
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name" required><br><br>
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required><br><br>
+      <label for="phone">Phone:</label>
+      <input type="text" id="phone" name="phone" required><br><br>
+      <label for="password" id="passwordLabel">Password:</label>
+      <input type="password" id="password" name="password"><br><br>
+      <label for="address">Address:</label>
+      <input type="text" id="address" name="address"><br><br>
+      <label for="date_of_birth">Date of Birth:</label>
+      <input type="date" id="date_of_birth" name="date_of_birth"><br><br>
+      <label for="emirate">Emirate:</label>
+      <input type="text" id="emirate" name="emirate"><br><br>
+      <label for="home_country">Home Country:</label>
+      <input type="text" id="home_country" name="home_country"><br><br>
+      <label for="home_city">Home City:</label>
+      <input type="text" id="home_city" name="home_city"><br><br>
+      <label for="isAdmin">Is Admin:</label>
+      <input type="checkbox" id="isAdmin" name="isAdmin"><br><br>
+      <label for="can_edit">Can Edit:</label>
+      <input type="checkbox" id="can_edit" name="can_edit"><br><br>
+      <label for="can_add">Can Add:</label>
+      <input type="checkbox" id="can_add" name="can_add"><br><br>
+      <button type="submit" id="submitButton">Add User</button>
+      <button type="button" onclick="cancelForm()">Cancel</button>
+    </form>
+  </div>
+
+  <div class="form-container" id="changePasswordContainer">
+    <form id="changePasswordForm">
+      <input type="hidden" id="changePasswordUserId" name="userId">
+      <label for="newPassword">New Password:</label>
+      <input type="password" id="newPassword" name="newPassword" required><br><br>
+      <button type="submit">Change Password</button>
+      <button type="button" onclick="cancelChangePasswordForm()">Cancel</button>
+    </form>
+  </div>
+
+  <div>
+    <label for="tokenInput">Token:</label>
+    <input type="text" id="tokenInput">
+    <button onclick="saveToken()">Save Token</button>
+  </div>
+
+  <div class="error-popup" id="errorPopup">
+    <p id="errorMessage"></p>
+    <button onclick="closeErrorPopup()">OK</button>
+  </div>
+
+  <script>
+    let selectedRow = null;
+    let selectedUserId = null;
+
+    async function fetchData() {
+      try {
+        const response = await fetch('http://localhost:8080/v1/tests/users');
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data.');
+        }
+        const data = await response.json();
+        const dataGrid = document.getElementById('data-grid');
+        dataGrid.innerHTML = '';
+
+        data.users.forEach(user => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${user.id}</td>
+            <td>${user.name}</td>
+            <td>${user.email}</td>
+            <td>${user.phone}</td>
+            <td>${user.date_of_birth}</td>
+            <td>${user.emirate}</td>
+            <td>${user.isAdmin}</td>
+            <td>${user.can_edit}</td>
+            <td>${user.can_add}</td>
+            <td>${user.address}</td>
+            <td>${user.home_city}</td>
+            <td>${user.home_country}</td>
+          `;
+          row.addEventListener('click', () => selectRow(row, user.id));
+          dataGrid.appendChild(row);
+        });
+      } catch (error) {
+        showErrorPopup(error.message);
+      }
+    }
+
+    function selectRow(row, userId) {
+      if (selectedRow) {
+        selectedRow.classList.remove('selected');
+      }
+      selectedRow = row;
+      selectedRow.classList.add('selected');
+      selectedUserId = userId;
+
+      document.getElementById('editButton').disabled = false;
+      document.getElementById('deleteButton').disabled = false;
+      document.getElementById('changePasswordButton').disabled = false;
+    }
+
+    function showAddForm() {
+      document.getElementById('userFormContainer').style.display = 'block';
+      document.getElementById('password').style.display = 'block';
+      document.getElementById('passwordLabel').style.display = 'block';
+      document.getElementById('submitButton').textContent = 'Add User';
+      document.getElementById('userForm').reset();
+      selectedUserId = null;
+    }
+
+    function showEditForm() {
+      if (selectedUserId) {
+        document.getElementById('userFormContainer').style.display = 'block';
+        document.getElementById('password').style.display = 'none';
+        document.getElementById('passwordLabel').style.display = 'none';
+        document.getElementById('submitButton').textContent = 'Edit User';
+
+        const rowData = Array.from(selectedRow.children).map(cell => cell.textContent);
+        document.getElementById('userId').value = rowData[0];
+        document.getElementById('name').value = rowData[1];
+        document.getElementById('email').value = rowData[2];
+        document.getElementById('phone').value = rowData[3];
+        document.getElementById('address').value = rowData[9];
+        document.getElementById('date_of_birth').value = rowData[4];
+        document.getElementById('emirate').value = rowData[5];
+        document.getElementById('home_country').value = rowData[11];
+        document.getElementById('home_city').value = rowData[10];
+        document.getElementById('isAdmin').checked = rowData[6] === 'true';
+        document.getElementById('can_edit').checked = rowData[7] === 'true';
+        document.getElementById('can_add').checked = rowData[8] === 'true';
+      }
+    }
+
+    async function deleteUser() {
+      if (selectedUserId) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:8080/v1/tests/${selectedUserId}/delete-user`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to delete user.');
+          }
+          fetchData();
+        } catch (error) {
+          showErrorPopup(error.message);
+        }
+      }
+    }
+
+    document.getElementById('userForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const token = localStorage.getItem('token');
+      const userData = {
+        name: event.target.name.value,
+        email: event.target.email.value,
+        phone: event.target.phone.value,
+        address: event.target.address.value,
+        date_of_birth: event.target.date_of_birth.value,
+        emirate: event.target.emirate.value,
+        country: event.target.home_country.value,
+        city: event.target.home_city.value,
+        isAdmin: event.target.isAdmin.checked,
+        can_edit: event.target.can_edit.checked,
+        can_add: event.target.can_add.checked
+      };
+      let url = 'http://localhost:8080/v1/tests/new-user';
+      let method = 'POST';
+
+      if (selectedUserId) {
+        url = `http://localhost:8080/v1/tests/edit-user`;
+        userData.id = selectedUserId;
+        method = 'PUT';
+      } else {
+        userData.password = event.target.password.value; // Only include password for new users
+      }
+
+      try {
+        const response = await fetch(url, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(userData)
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to save user data.');
+        }
+        cancelForm();
+        fetchData();
+      } catch (error) {
+        showErrorPopup(error.message);
+      }
+    });
+
+    document.getElementById('changePasswordForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const token = localStorage.getItem('token');
+      const newPassword = event.target.newPassword.value;
+      const userId = selectedUserId;
+
+      try {
+        const response = await fetch(`http://localhost:8080/v1/tests/${userId}/change-password`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ password: newPassword })
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to change password.');
+        }
+        cancelChangePasswordForm();
+        alert('Password changed successfully.');
+      } catch (error) {
+        showErrorPopup(error.message);
+      }
+    });
+
+    function saveToken() {
+      const token = document.getElementById('tokenInput').value;
+      localStorage.setItem('token', token);
+      alert('Token saved to local storage.');
+    }
+
+    function cancelForm() {
+      document.getElementById('userFormContainer').style.display = 'none';
+      selectedUserId = null;
+      selectedRow = null;
+      document.getElementById('editButton').disabled = true;
+      document.getElementById('deleteButton').disabled = true;
+      document.getElementById('changePasswordButton').disabled = true;
+    }
+
+    function showChangePasswordForm() {
+      document.getElementById('changePasswordContainer').style.display = 'block';
+      document.getElementById('changePasswordForm').reset();
+    }
+
+    function cancelChangePasswordForm() {
+      document.getElementById('changePasswordContainer').style.display = 'none';
+    }
+
+    function showErrorPopup(message) {
+      const errorPopup = document.getElementById('errorPopup');
+      document.getElementById('errorMessage').textContent = message;
+      errorPopup.style.display = 'block';
+    }
+
+    function closeErrorPopup() {
+      const errorPopup = document.getElementById('errorPopup');
+      errorPopup.style.display = 'none';
+    }
+
+    window.onload = fetchData;
+  </script>
+</body>
+
+</html>
